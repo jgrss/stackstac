@@ -3,6 +3,7 @@ from functools import cached_property
 from typing import Tuple, Union
 
 import affine
+import pyproj
 
 IntFloat = Union[int, float]
 Bbox = Tuple[IntFloat, IntFloat, IntFloat, IntFloat]
@@ -56,7 +57,7 @@ class RasterSpec:
     def vrt_params(self) -> dict:
         height, width = self.shape
         return {
-            "crs": self.epsg,
+            "crs": pyproj.CRS.from_epsg(self.epsg).to_wkt(),
             "transform": self.transform,
             "height": height,
             "width": width,

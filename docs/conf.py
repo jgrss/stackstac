@@ -22,7 +22,7 @@ import datetime
 
 DISTRIBUTION_METADATA = importlib.metadata.metadata("stackstac")
 
-author = DISTRIBUTION_METADATA["Author"]
+author = DISTRIBUTION_METADATA["Author-email"].split(" <")[0]
 project = DISTRIBUTION_METADATA["Name"]
 version = DISTRIBUTION_METADATA["Version"]
 copyright = f"{datetime.datetime.now().year}, {author}"
@@ -38,6 +38,7 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.napoleon",
     "sphinx_autodoc_typehints",
+    "sphinx_paramlinks",
     "nbsphinx",
     "jupyter_sphinx",
 ]
@@ -50,6 +51,7 @@ templates_path = ["_templates"]
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
+paramlinks_hyperlink_param = 'name'
 autosummary_generate = True
 napoleon_use_param = True
 # set_type_checking_flag = True
@@ -115,7 +117,7 @@ intersphinx_mapping = {
     "rasterio": ("https://rasterio.readthedocs.io/en/latest/", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
     "pystac": ("https://pystac.readthedocs.io/en/latest/", None),
-    "xarray": ("https://xarray.pydata.org/en/stable/", None),
+    "xarray": ("https://docs.xarray.dev/en/stable/", None),
     "dask": ("https://docs.dask.org/en/latest/", None),
     "distributed": ("https://distributed.dask.org/en/latest/", None),
     "matplotlib": ("https://matplotlib.org/stable", None),

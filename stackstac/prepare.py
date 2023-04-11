@@ -58,7 +58,7 @@ def prepare_items(
     assets: Optional[Union[List[str], AbstractSet[str]]] = frozenset(
         ["image/tiff", "image/x.geotiff", "image/vnd.stac.geotiff", "image/jp2"]
     ),
-    epsg: Optional[int] = None,
+    epsg: Optional[Union[int, str]] = None,
     resolution: Optional[Union[IntFloat, Resolutions]] = None,
     bounds: Optional[Bbox] = None,
     bounds_latlon: Optional[Bbox] = None,
@@ -69,6 +69,20 @@ def prepare_items(
         raise ValueError(
             f"Cannot give both `bounds` {bounds} and `bounds_latlon` {bounds_latlon}."
         )
+
+    if epsg is not None:
+        if isinstance(epsg, str):
+            if epsg.lower().startswith("epsg:"):
+                epsg = epsg.split(":")[1]
+
+            try:
+                epsg = int(epsg)
+            except ValueError:
+                raise ValueError(
+                    f"The EPSG code must be given as an integer or string. E.g., 4326, '4326', or 'epsg:4326'."
+                )
+
+        assert isinstance(epsg, int), "The EPSG code must be given as an integer."
 
     out_epsg = epsg
     out_bounds = bounds

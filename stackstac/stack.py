@@ -30,7 +30,7 @@ def stack(
     assets: Optional[Union[List[str], AbstractSet[str]]] = frozenset(
         ["image/tiff", "image/x.geotiff", "image/vnd.stac.geotiff", "image/jp2"]
     ),
-    epsg: Optional[int] = None,
+    epsg: Optional[Union[int, str]] = None,
     resolution: Optional[Union[IntFloat, Resolutions]] = None,
     bounds: Optional[Bbox] = None,
     bounds_latlon: Optional[Bbox] = None,

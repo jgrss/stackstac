@@ -33,7 +33,6 @@ def _curthread():
 
 # /TODO
 
-
 # Default GDAL configuration options
 DEFAULT_GDAL_ENV = LayeredEnv(
     always=dict(
@@ -65,11 +64,12 @@ DEFAULT_GDAL_ENV = LayeredEnv(
 # See `ThreadLocalRioDataset` for more.
 # https://github.com/pangeo-data/pangeo-example-notebooks/issues/21#issuecomment-432457955
 # https://gdal.org/drivers/raster/vrt.html#multi-threading-issues
+
 MULTITHREADED_DRIVER_ALLOWLIST = {"GTiff"}
 
 
 class ThreadsafeRioDataset(Protocol):
-    scale_offset: Tuple[float, float]
+    scale_offset: Tuple[Union[int, float], Union[int, float]]
 
     def read(self, window: Window, **kwargs) -> np.ndarray:
         ...
@@ -281,7 +281,7 @@ class PickleState(TypedDict):
     resampling: Resampling
     dtype: np.dtype
     fill_value: Union[int, float]
-    rescale: bool
+    scale_offset: Tuple[Union[int, float], Union[int, float]]
     gdal_env: Optional[LayeredEnv]
     errors_as_nodata: Tuple[Exception, ...]
 
@@ -304,7 +304,7 @@ class AutoParallelRioReader:
         resampling: Resampling,
         dtype: np.dtype,
         fill_value: Union[int, float],
-        rescale: bool,
+        scale_offset: Tuple[Union[int, float], Union[int, float]],
         gdal_env: Optional[LayeredEnv] = None,
         errors_as_nodata: Tuple[Exception, ...] = (),
     ) -> None:
@@ -312,8 +312,8 @@ class AutoParallelRioReader:
         self.spec = spec
         self.resampling = resampling
         self.dtype = dtype
-        self.rescale = rescale
         self.fill_value = fill_value
+        self.scale_offset = scale_offset
         self.gdal_env = gdal_env or DEFAULT_GDAL_ENV
         self.errors_as_nodata = errors_as_nodata
 
@@ -324,9 +324,7 @@ class AutoParallelRioReader:
         with self.gdal_env.open:
             with time(f"Initial read for {self.url!r} on {_curthread()}: {{t}}"):
                 try:
-                    ds = SelfCleaningDatasetReader(
-                        self.url, sharing=False
-                    )
+                    ds = SelfCleaningDatasetReader(self.url, sharing=False)
                 except Exception as e:
                     msg = f"Error opening {self.url!r}: {e!r}"
                     if exception_matches(e, self.errors_as_nodata):
@@ -387,6 +385,7 @@ class AutoParallelRioReader:
         try:
             result = reader.read(
                 window=window,
+                out_dtype=self.dtype,
                 masked=True,
                 # ^ NOTE: we always do a masked array, so we can safely apply scales and offsets
                 # without potentially altering pixels that should have been the ``fill_value``
@@ -400,15 +399,17 @@ class AutoParallelRioReader:
 
             raise RuntimeError(msg) from e
 
-        if self.rescale:
-            scale, offset = reader.scale_offset
-            if scale != 1:
-                result *= scale
-            if offset != 0:
-                result += offset
+        scale, offset = self.scale_offset
 
-        result = result.astype(self.dtype, copy=False)
+        if scale != 1:
+            result *= scale
+        if offset != 0:
+            result += offset
+
         result = np.ma.filled(result, fill_value=self.fill_value)
+        assert np.issubdtype(result.dtype, self.dtype), (
+            f"Expected result array with dtype {self.dtype!r}, got {result.dtype!r}"
+        )
         return result
 
     def close(self) -> None:
@@ -436,7 +437,7 @@ class AutoParallelRioReader:
             "resampling": self.resampling,
             "dtype": self.dtype,
             "fill_value": self.fill_value,
-            "rescale": self.rescale,
+            "scale_offset": self.scale_offset,
             "gdal_env": self.gdal_env,
             "errors_as_nodata": self.errors_as_nodata,
         }
